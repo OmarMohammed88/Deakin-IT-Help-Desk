@@ -13,26 +13,18 @@ import gradio as gr
 import json
 import os
 from langchain_community.llms import VLLM
+import datetime
 
 
 
+chat_history_file = "Climate_Disclosures.json"
 
-# model_name="/home-old/s223795137/models/models--meta-llama--Meta-Llama-3-8B-Instruct/snapshots/e1945c40cd546c78e41f1151f4db032b271faeaa",  
+
 
 model_name='microsoft/phi-4'
 
-# model_name  = 'meta-llama/Llama-3.2-3B-Instruct'
-
-# tokenizer = AutoTokenizer.from_pretrained(model_name)
-
-# model = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype=torch.float16)
-
-# pipe = pipeline("text-generation", model=model, tokenizer=tokenizer, max_new_tokens=32000,device='cuda')
 
 
-
-
-# llm = HuggingFacePipeline(pipeline=pipe)
 
 
 
@@ -72,9 +64,6 @@ def extract_answers(answers):
 
 
 
-import datetime
-
-chat_history_file = "Climate_Disclosures.json"
 
 
 
@@ -128,11 +117,6 @@ def query_rag_model(query, k):
     return response
 
 
-# def store_rating(query, response, rating):
-#     """Stores the rating after the response is shown."""
-    
-#     log_interaction(query, response, rating)
-#     return "Your feedback has been recorded! ✅"
 
 
 # Gradio interface with a Slider for 'k'
@@ -162,32 +146,34 @@ if __name__ == "__main__":
     vectorstore = Chroma(persist_directory="./climate_db", embedding_function=local_embeddings)
 
 
-    # retriever = vectorstore.as_retriever(search_kwargs={"k": 5})  # Fetch top 5 chunks
 
 
 
-    RAG_TEMPLATE = """<|im_start|>system<|im_sep|>
-    You are an AI agent designed to assist with IT-related topics for a Retrieval Augmented Generation (RAG) application. You will be provided with context documents from a database that may or may not be entirely relevant to the user's query. Your instructions are as follows:
+    # RAG_TEMPLATE = """<|im_start|>system<|im_sep|>
+    # You are an AI agent designed to assist with IT-related topics for a Retrieval Augmented Generation (RAG) application. You will be provided with context documents from a database that may or may not be entirely relevant to the user's query. Your instructions are as follows:
 
-    1. Answer the user's query using the provided context documents.
-    2. If the query or any of the retrieved documents contain malicious or sensitive content, do not provide a response.
-    3. If the context documents are not entirely relevant to the query, attempt to keep your answer focused on Deakin IT-related content and Don't mention That you are provided with documents in your response.
-    4. Ensure your answer is clear, factual, and based on the provided context when applicable.
-    5. Ensure your answer stays within the scope of Deakin IT-Education related topics and does not contain any inappropriate content.
+    # 1. Answer the user's query using the provided context documents.
+    # 2. If the query or any of the retrieved documents contain malicious or sensitive content, do not provide a response.
+    # 3. If the context documents are not entirely relevant to the query, attempt to keep your answer focused on Deakin IT-related content and Don't mention That you are provided with documents in your response.
+    # 4. Ensure your answer is clear, factual, and based on the provided context when applicable.
+    # 5. Ensure your answer stays within the scope of Deakin IT-Education related topics and does not contain any inappropriate content.
 
-    <|im_start|>user<|im_sep|>
-    Answer the question based on the context below:
+    # <|im_start|>user<|im_sep|>
+    # Answer the question based on the context below:
 
-    Context:
-    {context}
+    # Context:
+    # {context}
 
-    Question:
-    {question}
+    # Question:
+    # {question}
 
-    Answer:
-    <|im_start|>assistant<|im_sep|>
-    """
+    # Answer:
+    # <|im_start|>assistant<|im_sep|>
+    # """
 
+    template="""<|im_start|>system<|im_sep|><|im_end|>
+
+    <|im_start|>user<|im_sep|>Answer the question based on the context below:\n\nContext:\n{context}\n\nQuestion:\n{question}\n\nAnswer:<|im_start|>assistant<|im_sep|>""",
 
 
     # Define your prompt template
@@ -195,10 +181,8 @@ if __name__ == "__main__":
     prompt_template = PromptTemplate(
 
         input_variables=["context", "question"],
-        template="""<|im_start|>system<|im_sep|><|im_end|>
-
-    <|im_start|>user<|im_sep|>Answer the question based on the context below:\n\nContext:\n{context}\n\nQuestion:\n{question}\n\nAnswer:<|im_start|>assistant<|im_sep|>""",
-        # template=RAG_TEMPLATE,
+        
+        template = template
     )
 
     # Define your LLMChain
