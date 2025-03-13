@@ -13,22 +13,15 @@ from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
 
 
-# model_name="/home-old/s223795137/models/models--meta-llama--Meta-Llama-3-8B-Instruct/snapshots/e1945c40cd546c78e41f1151f4db032b271faeaa",  
+
+
 
 model_name='microsoft/phi-4'
 
-# model_name  = 'meta-llama/Llama-3.2-3B-Instruct'
 
-# tokenizer = AutoTokenizer.from_pretrained(model_name)
+crawled_pages = '/weka/s223795137/Crawl_data/crawled_pages/'
 
-# model = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype=torch.float16)
-
-# pipe = pipeline("text-generation", model=model, tokenizer=tokenizer, max_new_tokens=32000,device='cuda')
-
-
-
-
-# llm = HuggingFacePipeline(pipeline=pipe)
+chat_history_file = "chat_history.json"
 
 
 
@@ -66,27 +59,15 @@ def extract_answers(answers):
     return answers
 
 
-# def get_title(links):
-#     titles =  [i.metadata['source'].split("/weka/s223795137/Crawl_data/crawled_pages/")[-1].split("_")[0] for i in links]
-
-#     matches = set()  # Use a set to avoid duplicates
-
-#     for word in  list(set(titles)):
-
-#         close_keys = difflib.get_close_matches(word, data_swap.keys(), n=1, cutoff=0.6)
-        
-#         matches.update(close_keys)
-#     return list(matches)
-
 def get_title(links):
     
-    titles =  [i.metadata['source'].split("/weka/s223795137/Crawl_data/crawled_pages/")[-1].split("_")[0] for i in links]
+    titles =  [i.metadata['source'].split(crawled_pages)[-1].split("_")[0] for i in links]
     
     result = get_most_related_keys(titles , data_swap)
     
     return result
 
-with open("/weka/s223795137/Crawl_data/crawled_pages/crawled_pages.json") as f:
+with open(crawled_pages+"/crawled_pages.json") as f:
     data = json.load(f)
 
 
@@ -142,6 +123,8 @@ def calculate_query_doc_similarity(query, vectorstore, k=5):
 
     return sorted_similarities[:2], average_similarity
 
+
+
 def get_most_related_keys(titles, dictionary, top_n=5):
     """
     Find the top N keys in a dictionary most related to a given list of titles based on cosine similarity.
@@ -181,12 +164,14 @@ def get_most_related_keys(titles, dictionary, top_n=5):
     
     # Return the results
     if len(most_related):
+
         most_related = [i[0] for i in most_related[0]]
+
     return most_related
 
 import datetime
 
-chat_history_file = "chat_history.json"
+
 
 
 
@@ -229,7 +214,7 @@ def query_rag_model(query, k):
     
     # Run the RAG pipeline
     response = rag_chain.run(query)
-    k
+    
     # Extract the answer
     response = extract_answers(response)
 
@@ -243,11 +228,6 @@ def query_rag_model(query, k):
     return response ,citation_links , top2_Score,  f"{sim_score:.4f}"
 
 
-# def store_rating(query, response, rating):
-#     """Stores the rating after the response is shown."""
-    
-#     log_interaction(query, response, rating)
-#     return "Your feedback has been recorded! ✅"
 
 
 # Gradio interface with a Slider for 'k'
@@ -319,6 +299,10 @@ if __name__ == "__main__":
     <|im_start|>assistant<|im_sep|>
     """
 
+    # template="""<|im_start|>system<|im_sep|><|im_end|>
+
+# <|im_start|>user<|im_sep|>Answer the question based on the context below:\n\nContext:\n{context}\n\nQuestion:\n{question}\n\nAnswer:<|im_start|>assistant<|im_sep|>""",
+
 
 
     # Define your prompt template
@@ -326,13 +310,12 @@ if __name__ == "__main__":
     prompt_template = PromptTemplate(
 
         input_variables=["context", "question"],
-        # template="""<|im_start|>system<|im_sep|><|im_end|>
 
-    # <|im_start|>user<|im_sep|>Answer the question based on the context below:\n\nContext:\n{context}\n\nQuestion:\n{question}\n\nAnswer:<|im_start|>assistant<|im_sep|>""",
-        template=RAG_TEMPLATE,
+         template=RAG_TEMPLATE,
     )
 
     # Define your LLMChain
+    
     llm_chain = LLMChain(llm=llm, prompt=prompt_template)  # Replace with your LLM
 
 
