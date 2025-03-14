@@ -11,8 +11,13 @@ from langchain_community.llms import VLLM
 import difflib
 from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
+# Argument Parser
+parser = argparse.ArgumentParser(description="Convert documents to text and store in Chroma DB")
+parser.add_argument("--vector_db", type=str, default="vector_db", help="Directory for storing vector database")
+args = parser.parse_args()
 
 
+vector_db = args.vector_db
 
 
 
@@ -271,7 +276,7 @@ if __name__ == "__main__":
 
 
 
-    vectorstore = Chroma(persist_directory="./citaion_test", embedding_function=local_embeddings)
+    vectorstore = Chroma(persist_directory=vector_db, embedding_function=local_embeddings)
 
 
 
