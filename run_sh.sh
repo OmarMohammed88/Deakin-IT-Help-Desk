@@ -1,27 +1,22 @@
 #!/bin/bash
 #SBATCH --nodes=1
-#SBATCH --partition=gpu-large
-#SBATCH --gres=gpu:h100:1
+#SBATCH --partition=gpu
+#SBATCH --gres=gpu:l40s:1
 #SBATCH --ntasks=1
-#SBATCH --time=0-72:00
+#SBATCH --time=0-120:00
 #SBATCH --mem=60G
 #SBATCH --output=%N-%j.out
-#SBATCH --qos=batch-short
+#SBATCH --qos=batch-long
 #SBATCH --output=logs/%N-%j.out
+
 
 
 module load Anaconda3
 source activate
-# conda activate llava2
-conda activate /home/s223795137/.conda/envs/llava
+conda activate rag_app
 
 
-
-# gradio  gradio_run.py
-
-# gradio gradio_re_order.py
 
 
 gradio citation_run.py
 
-# gradio Climate_Disclosures.py
