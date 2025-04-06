@@ -1,4 +1,4 @@
-name: test_app
+name: rag_app
 channels:
   - anaconda
   - defaults
