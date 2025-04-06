@@ -11,22 +11,14 @@ from langchain_community.llms import VLLM
 import difflib
 from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
-# Argument Parser
-parser = argparse.ArgumentParser(description="Convert documents to text and store in Chroma DB")
-parser.add_argument("--vector_db", type=str, default="vector_db", help="Directory for storing vector database")
-args = parser.parse_args()
-
-
-vector_db = args.vector_db
+from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
+from langchain.llms import HuggingFacePipeline
+import subprocess
 
 
 
 model_name='microsoft/phi-4'
 
-
-crawled_pages = '/weka/s223795137/Crawl_data/crawled_pages/'
-
-chat_history_file = "chat_history.json"
 
 
 
@@ -65,14 +57,21 @@ def extract_answers(answers):
 
 
 def get_title(links):
-    
-    titles =  [i.metadata['source'].split(crawled_pages)[-1].split("_")[0] for i in links]
-    
-    result = get_most_related_keys(titles , data_swap)
-    
-    return result
+    titles =  [i.metadata['source'].split("/weka/s223795137/Crawl_data/crawled_pages/")[-1].split("_")[0] for i in links]
 
-with open(crawled_pages+"/crawled_pages.json") as f:
+    matches = set()  # Use a set to avoid duplicates
+
+    for word in  list(set(titles)):
+
+        close_keys = difflib.get_close_matches(word, data_swap.keys(), n=1, cutoff=0.6)
+        
+        matches.update(close_keys)
+    return list(matches)
+
+
+
+
+with open("crawled_pages/crawled_pages.json") as f:
     data = json.load(f)
 
 
@@ -128,8 +127,6 @@ def calculate_query_doc_similarity(query, vectorstore, k=5):
 
     return sorted_similarities[:2], average_similarity
 
-
-
 def get_most_related_keys(titles, dictionary, top_n=5):
     """
     Find the top N keys in a dictionary most related to a given list of titles based on cosine similarity.
@@ -169,14 +166,12 @@ def get_most_related_keys(titles, dictionary, top_n=5):
     
     # Return the results
     if len(most_related):
-
         most_related = [i[0] for i in most_related[0]]
-
     return most_related
 
 import datetime
 
-
+chat_history_file = "chat_history.json"
 
 
 
@@ -219,7 +214,7 @@ def query_rag_model(query, k):
     
     # Run the RAG pipeline
     response = rag_chain.run(query)
-    
+    k
     # Extract the answer
     response = extract_answers(response)
 
@@ -229,7 +224,6 @@ def query_rag_model(query, k):
 
     top2_Score , sim_score = calculate_query_doc_similarity(query , vectorstore , k)
     # Log interaction in JSON format
-
     return response ,citation_links , top2_Score,  f"{sim_score:.4f}"
 
 
@@ -255,6 +249,8 @@ def rag_interface(query, k=5):
 
         response = response+"\n\nReferences:\n\n" + links_markdown
 
+    log_interaction(query,response)
+
     return response , top2_Score , avg_score
 
 
@@ -262,12 +258,17 @@ def rag_interface(query, k=5):
 if __name__ == "__main__":
 
 
-    llm = VLLM(
-        model=model_name,
-        tensor_parallel_size=1,
-        trust_remote_code=True,  # mandatory for hf models
-        max_new_tokens=32000,
-    )
+
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+
+    model = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype=torch.float16 , attn_implementation="flash_attention_2" , low_cpu_mem_usage=True) 
+
+    pipe = pipeline("text-generation", model=model, tokenizer=tokenizer, max_new_tokens=32000,device='cuda')
+
+
+
+
+    llm = HuggingFacePipeline(pipeline=pipe)
 
 
     local_embeddings = SentenceTransformerEmbeddings(batch_size=64)
@@ -276,8 +277,7 @@ if __name__ == "__main__":
 
 
 
-    vectorstore = Chroma(persist_directory=vector_db, embedding_function=local_embeddings)
-
+    vectorstore = Chroma(persist_directory="./citaion_test", embedding_function=local_embeddings)
 
 
 
@@ -304,10 +304,6 @@ if __name__ == "__main__":
     <|im_start|>assistant<|im_sep|>
     """
 
-    # template="""<|im_start|>system<|im_sep|><|im_end|>
-
-# <|im_start|>user<|im_sep|>Answer the question based on the context below:\n\nContext:\n{context}\n\nQuestion:\n{question}\n\nAnswer:<|im_start|>assistant<|im_sep|>""",
-
 
 
     # Define your prompt template
@@ -316,18 +312,29 @@ if __name__ == "__main__":
 
         input_variables=["context", "question"],
 
-         template=RAG_TEMPLATE,
+        template=RAG_TEMPLATE,
     )
 
     # Define your LLMChain
-    
+
     llm_chain = LLMChain(llm=llm, prompt=prompt_template)  # Replace with your LLM
 
 
     stuff_chain = StuffDocumentsChain(
+
         llm_chain=llm_chain,
+        
         document_variable_name="context"  
+
     )
+
+
+    def get_static_ip():
+        ip_list = subprocess.getoutput("hostname -I").split()
+        return ip_list[0]  # Default to localhost if no IP is found
+
+
+    static_ip = get_static_ip()
 
 
     iface = gr.Interface(
@@ -359,5 +366,9 @@ if __name__ == "__main__":
 
 
 
-    iface.launch(share=True)
+    iface.launch(server_name=static_ip)
+
+
+
+
 
