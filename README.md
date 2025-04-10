@@ -36,5 +36,5 @@ Ensure the application functions correctly, you need to download the necessary d
 Once the environment is set up and the necessary data is downloaded, you can run the application with the following command:
 
 ```
-sbatch run_rag
+sbatch run_rag.sh
 ```
