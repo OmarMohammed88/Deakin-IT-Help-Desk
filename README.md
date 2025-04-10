@@ -20,7 +20,7 @@ module load Anaconda3
 
 conda env create -f environment.yml
 
-conda source
+source activate
 
 conda activate rag_app
 ```
